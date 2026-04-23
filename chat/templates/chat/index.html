@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SilentHaven - Твой ИИ-компаньон</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; }
+        .chat-container { max-width: 800px; margin: 50px auto; background: white; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 20px; }
+        #chat-box { height: 60vh; overflow-y: auto; padding: 15px; border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 20px; background-color: #fafafa; }
+        .msg { padding: 12px 18px; margin-bottom: 15px; border-radius: 20px; max-width: 75%; clear: both; }
+        .user-msg { background-color: #0d6efd; color: white; float: right; border-bottom-right-radius: 2px; }
+        .ai-msg { background-color: #e9ecef; color: #333; float: left; border-bottom-left-radius: 2px; }
+        .emergency-alert { background-color: #dc3545; color: white; text-align: center; border-radius: 10px; padding: 15px; margin-top: 10px; clear: both; float: none; display: block; width: 100%;}
+    </style>
+</head>
+<body>
+
+<div class="container chat-container">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>🌿 SilentHaven</h4>
+        <select class="form-select w-auto form-select-sm">
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
+    <div id="chat-box">
+        <div class="msg ai-msg">
+            Здравствуй. Я здесь, чтобы выслушать тебя. О чем бы ты хотел поговорить сегодня?
+        </div>
+    </div>
+
+    <form id="chat-form" class="d-flex">
+        {% csrf_token %}
+        <input type="text" id="message-input" class="form-control me-2" placeholder="Напиши сообщение..." required autocomplete="off">
+        <button type="submit" class="btn btn-primary">Отправить</button>
+    </form>
+</div>
+
+<script>
+    const chatForm = document.getElementById('chat-form');
+    const chatBox = document.getElementById('chat-box');
+    const messageInput = document.getElementById('message-input');
+    
+    // Получаем секретный токен Django
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    chatForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // Останавливаем обычную перезагрузку страницы
+        const text = messageInput.value;
+        if (!text) return;
+
+        // 1. Рисуем сообщение пользователя на экране
+        chatBox.innerHTML += `<div class="msg user-msg">${text}</div>`;
+        messageInput.value = ''; // Очищаем поле
+        chatBox.scrollTop = chatBox.scrollHeight; // Прокручиваем вниз
+
+        // 2. Отправляем данные на наш Python-бэкенд
+        const formData = new FormData();
+        formData.append('message', text);
+
+        fetch('/send/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 3. Получаем ответ от ИИ и рисуем его
+            chatBox.innerHTML += `<div class="msg ai-msg">${data.response}</div>`;
+            
+            // Если сработал критический триггер (красный флаг)
+            if (data.is_trigger) {
+                chatBox.innerHTML += `
+                <div class="emergency-alert">
+                    <strong>Система безопасности:</strong> Пожалуйста, обратитесь за помощью.<br>
+                    Телефон доверия: 8-800-333-44-34
+                </div>`;
+            }
+            chatBox.scrollTop = chatBox.scrollHeight; // Прокручиваем вниз
+        })
+        .catch(error => console.error('Ошибка:', error));
+    });
+</script>
+
+</body>
+</html>
