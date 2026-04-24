@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from .models import ChatSession, Message
-from .ai_services import analyze_sentiment_and_triggers, get_ai_response
+from .ai_services import get_ai_response_and_analysis
 
 def chat_interface(request):
     """
@@ -10,41 +10,43 @@ def chat_interface(request):
     return render(request, 'chat/index.html')
 
 def send_message(request):
-    """
-    Эта функция принимает сообщение пользователя через AJAX (без перезагрузки страницы),
-    обрабатывает его и возвращает ответ ИИ.
-    """
     if request.method == "POST":
         user_text = request.POST.get('message')
-        
-        # Для MVP берем первую попавшуюся сессию пользователя или создаем новую
-        # (В идеале здесь нужно проверять request.user, но пока упростим)
         session, created = ChatSession.objects.get_or_create(user=request.user)
         
-        # 1. Анализируем текст
-        is_trigger, sentiment = analyze_sentiment_and_triggers(user_text)
-        
-        # 2. Сохраняем сообщение пользователя в БД
-        Message.objects.create(
+        user_msg = Message.objects.create(
             session=session,
-            sender='user',
-            text=user_text,
-            is_trigger_alert=is_trigger,
-            sentiment_value=sentiment
+            sender="user",
+            text=user_text
         )
+
+        last_messages = Message.objects.filter(session=session).order_by('-timestamp')[:6]
+        history = []
+        for msg in reversed(last_messages):
+            role = 'user' if msg.sender == 'user' else 'assistant'
+            history.append({"role": role, "content": msg.text})
+
+        ai_data = get_ai_response_and_analysis(history)
+
+        reply_text = ai_data.get('reply', 'Извини, я задумался.')
+        sentiment = ai_data.get('sentiment', 0.1)
+        is_trigger = ai_data.get('is_trigger', False)
+
+        user_msg.sentiment_value = sentiment
+        user_msg.is_trigger_alert = is_trigger
+        user_msg.save()
+
+        if is_trigger:
+            reply_text = ("Я вижу, что тебе сейчас невероятно тяжело и небезопасно. "
+                          "Пожалуйста, знай, что твоя жизнь важна. Обратись к специалистам прямо сейчас.")
         
-        # 3. Получаем ответ от ИИ
-        ai_text = get_ai_response(user_text, is_trigger)
-        
-        # 4. Сохраняем ответ ИИ в БД
         Message.objects.create(
             session=session,
             sender='ai',
-            text=ai_text
+            text=reply_text
         )
-        
-        # 5. Отдаем ответ обратно на веб-страницу
+
         return JsonResponse({
-            'response': ai_text,
+            'response': reply_text,
             'is_trigger': is_trigger
         })

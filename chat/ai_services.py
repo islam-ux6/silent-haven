@@ -1,76 +1,67 @@
 import os
-from openai import OpenAI
+import json
+from groq import Groq
 from dotenv import load_dotenv
 
 # Загружаем секреты из файла .env
 load_dotenv()
 
 # Достаем ключ безопасно
-API_KEY = os.getenv("OPENROUTER_API_KEY")
+API_KEY = os.getenv("GROQ_API_KEY")
 
-# Инициализируем клиента, направляя его на серверы OpenRouter
+# Инициализируем клиента Groq
 if API_KEY:
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=API_KEY,
-    )
+    client = Groq(api_key=API_KEY)
 else:
     client = None
-    print("ВНИМАНИЕ: API ключ не найден в файле .env!")
 
-# Тот самый "мозг" и характер бота
 SYSTEM_PROMPT = """Ты — SilentHaven, эмпатичный ИИ-компаньон. 
-Твоя цель — предоставлять эмоциональную поддержку, использовать активное слушание и валидировать чувства пользователя, страдающего от одиночества, выгорания или стресса.
+Твоя цель — предоставлять эмоциональную поддержку.
 
-Твои строгие правила:
+Твои строгие психологические правила:
 1. Ты НЕ врач и НЕ ставишь диагнозы. Если спрашивают медицинский совет, мягко направляй к специалистам.
 2. Избегай "токсичного позитива" (не говори "все будет хорошо", "просто улыбнись"). Вместо этого признавай боль: "Я слышу, как тебе тяжело".
 3. Задавай открытые, но не давящие вопросы, чтобы человек мог выговориться.
 4. Отвечай на том языке, на котором к тебе обратились (Русский или Английский).
 5. Держи ответы краткими, теплыми и разговорными (1-3 небольших предложения).
+
+ВАЖНОЕ ТЕХНИЧЕСКОЕ ПРАВИЛО: Ты обязан отвечать СТРОГО в формате JSON. Твой ответ должен быть валидным JSON-объектом с тремя полями:
+1. "reply": твой текстовый ответ пользователю (эмпатичный, соблюдающий все 5 правил выше).
+2. "sentiment": число от -1.0 (очень негативно/меланхолия) до 1.0 (очень позитивно), оценивающее скрытую тональность сообщения пользователя.
+3. "is_trigger": булево значение (true или false). Ставь true ТОЛЬКО если есть прямая угроза жизни или суицидальные мысли.
 """
 
-def analyze_sentiment_and_triggers(text):
-    """
-    NLP-функция проверки на красные флаги.
-    """
-    text_lower = text.lower()
-    
-    danger_words = ['убить', 'смысл', 'закончить', 'не хочу жить', 'суицид', 'kill', 'suicide', 'end it', 'hopeless']
-    is_trigger = any(word in text_lower for word in danger_words)
-    
-    negative_words = ['грустно', 'одиноко', 'плохо', 'тоска', 'боль', 'sad', 'lonely', 'pain', 'depressed']
-    sentiment = -0.5 if any(word in text_lower for word in negative_words) else 0.1
-    
-    return is_trigger, sentiment
 
-def get_ai_response(user_text, is_trigger):
+def get_ai_response_and_analysis(messages_history):
     """
-    Функция обращения к LLM через OpenRouter.
+    Отправляет историю в Groq и возвращает разобранный JSON с ответом и аналитикой.
     """
-    # 1. Жесткий перехват
-    if is_trigger:
-        return ("Я вижу, что тебе сейчас невероятно тяжело и небезопасно. Пожалуйста, знай, что твоя жизнь важна. "
-                "Я всего лишь ИИ, но я хочу, чтобы ты получил реальную поддержку. Пожалуйста, обратись к специалистам или близким прямо сейчас.")
-    
+
     # 2. Проверка ключа
     if not client:
-        return "Система настроена! Но чтобы я мог отвечать осмысленно, разработчику нужно добавить OPENROUTER_API_KEY в файл .env."
-
+        return {"reply": "API ключ не настроеню", "sentiment": 0, "is_trigger":False}
+    
     try:
-        # Отправляем запрос
+        api_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + messages_history
+
+        # Отправляем запрос на серверы Groq
         completion = client.chat.completions.create(
-        model="meta-llama/llama-3.1-8b-instruct:free", # Обновленная версия
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_text},
-        ],
-        temperature=0.7,
-    )
-        
-        # Возвращаем сгенерированный текст
-        return completion.choices[0].message.content
+            model="llama-3.1-8b-instant", # Быстрая и умная модель от Meta, доступная в Groq
+            messages=api_messages,
+            temperature=0.7,
+            max_tokens=1024, 
+            response_format={"type": "json_object"}
+        )
+
+        raw_json_string = completion.choices[0].message.content
+
+        ai_data = json.loads(raw_json_string)
+        return ai_data
         
     except Exception as e:
-        print(f"Ошибка API OpenRouter: {e}") 
-        return "Извини, мне сейчас немного трудно сосредоточиться (ошибка соединения). Давай попробуем еще раз через минуту?"
+        print(f"Ошибка API Groq: {e}") 
+        return {
+            "reply": "Извини, небольшая заминка с сетью. Попробуем еще раз?",
+            "sentiment": 0,
+            "is_trigger": False
+        }
