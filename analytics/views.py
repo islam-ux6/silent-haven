@@ -1,12 +1,17 @@
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from chat.models import Message
 
+@login_required(login_url='/login/')
 def dashboard(request):
     """
     Собирает данные о тональности сообщений для графика.
     """
-    # Берем все сообщения от пользователя (сортируем по времени)
-    user_messages = Message.objects.filter(sender='user').order_by('timestamp')
+    
+    user_messages = Message.objects.filter(
+        sender='user',
+        session__user=request.user
+    ).order_by('timestamp')
     
     # Подготавливаем списки для графика
     timestamps = []

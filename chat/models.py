@@ -6,6 +6,7 @@ from django.conf import settings
 
 class ChatSession(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    title = models.CharField(max_length=255, default="Новый чат")
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Поле для краткого резюме сессии, которое может генерировать ИИ
