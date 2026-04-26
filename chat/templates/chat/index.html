@@ -2,18 +2,32 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SilentHaven - Чат</title>
+    <title>SilentHaven - Эмпатичный ИИ</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        #chat-window { height: calc(100vh - 180px); overflow-y: auto; }
-        .sidebar { height: 100vh; overflow-y: auto; transition: all 0.3s; }
+        /* Основные стили высоты и прокрутки */
+        #chat-window { 
+            height: calc(100vh - 180px); 
+            overflow-y: auto; 
+            scroll-behavior: smooth;
+        }
+        .sidebar { 
+            height: 100vh; 
+            overflow-y: auto; 
+            transition: all 0.3s ease; 
+        }
+        #main-panel {
+            transition: all 0.3s ease;
+        }
+        
+        /* Стили для элементов списка чатов */
         .hover-bg-secondary:hover { background-color: rgba(255,255,255,0.1); }
-        /* Скрываем кнопки управления по умолчанию и показываем при наведении */
         .chat-actions { opacity: 0; transition: opacity 0.2s; }
         .nav-item:hover .chat-actions { opacity: 1; }
-        #main-panel {
-        transition: flex 0.3s ease-in-out, max-width 0.3s ease-in-out;
-        }
+        
+        /* Кастомный скроллбар для аккуратного вида */
+        #chat-window::-webkit-scrollbar { width: 6px; }
+        #chat-window::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-light overflow-hidden">
@@ -22,15 +36,15 @@
         
         <nav id="sidebar" class="col-md-3 col-lg-2 bg-dark sidebar py-4 shadow">
             <div class="px-3 mb-4">
-                <a href="{% url 'new_chat' %}" class="btn btn-outline-light w-100 fw-bold">+ Новый чат</a>
+                <a href="{% url 'new_chat' %}" class="btn btn-outline-light w-100 fw-bold shadow-sm">+ Новый чат</a>
             </div>
-            <h6 class="text-uppercase text-muted px-3 mb-2" style="font-size: 0.8rem;">Ваши сессии</h6>
+            <h6 class="text-uppercase text-muted px-3 mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">История диалогов</h6>
             <ul class="nav flex-column px-2">
                 {% for session in sessions %}
                 <li class="nav-item mb-1 d-flex justify-content-between align-items-center rounded {% if session.id == current_session.id %}bg-primary{% else %}hover-bg-secondary{% endif %}">
                     <a class="nav-link text-truncate px-3 py-2 text-white" 
-                       href="{% url 'chat_with_id' session.id %}" id="chat-title-{{ session.id }}" style="width: 75%;">
-                        💬 {{ session.title|truncatechars:20 }}
+                       href="{% url 'chat_with_id' session.id %}" id="chat-title-{{ session.id }}" style="width: 75%; font-size: 0.9rem;">
+                        💬 {{ session.title }}
                     </a>
                     <div class="chat-actions pe-2">
                         <button class="btn btn-sm text-white p-0 me-1" onclick="renameChat({{ session.id }}, '{{ session.title|escapejs }}')" title="Переименовать">✏️</button>
@@ -41,15 +55,15 @@
             </ul>
         </nav>
 
-        <main id="main-panel" class="col-md-9 col-lg-10 px-md-4 d-flex flex-column" style="height: 100vh; transition: all 0.3s;">
+        <main id="main-panel" class="col-md-9 col-lg-10 px-md-4 d-flex flex-column" style="height: 100vh;">
             
             <div class="d-flex justify-content-between align-items-center py-3 border-bottom mt-2">
                 <div class="d-flex align-items-center">
                     <button id="toggle-sidebar-btn" class="btn btn-sm btn-outline-secondary me-3" title="Скрыть/Показать панель">☰</button>
-                    <h4 class="mb-0 text-primary">🌿 SilentHaven</h4>
+                    <h4 class="mb-0 text-primary fw-bold">🌿 SilentHaven</h4>
                 </div>
                 <div>
-                    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary me-2">Дашборд</a>
+                    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary me-2">📊 Дашборд</a>
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger">Выйти</button>
@@ -60,14 +74,29 @@
             <div id="chat-window" class="p-3 bg-white shadow-sm mt-3 rounded border">
                 {% for msg in messages %}
                     <div class="mb-3 {% if msg.sender == 'user' %}text-end{% endif %}">
-                        <div class="d-inline-block p-2 px-3 rounded shadow-sm {% if msg.sender == 'user' %}bg-primary text-white{% else %}bg-light text-dark border{% endif %}" style="max-width: 80%; text-align: left;">
-                            {{ msg.text }}
+                        <div class="d-inline-block p-2 px-3 rounded shadow-sm {% if msg.sender == 'user' %}bg-primary text-white{% else %}bg-light text-dark border{% endif %}" style="max-width: 80%; text-align: left; white-space: pre-wrap;">{{ msg.text }}</div>
+                    </div>
+                    
+                    {% if msg.sender == 'ai' and msg.anxiety >= 0.75 %}
+                    <div class="mb-3">
+                        <div class="d-inline-block p-3 px-4 rounded shadow-sm bg-success text-white" style="max-width: 80%; text-align: left;">
+                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 Техника "5-4-3-2-1"</h5>
+                            <p class="mb-2 fw-bold">Давай попробуем заземлиться. Найди:</p>
+                            <ul class="mb-0">
+                                <li>👀 5 предметов, которые ты <strong>видишь</strong></li>
+                                <li>🖐️ 4 вещи, которые ты можешь <strong>потрогать</strong></li>
+                                <li>👂 3 звука, которые ты <strong>слышишь</strong></li>
+                                <li>👃 2 запаха, которые ты <strong>чувствуешь</strong></li>
+                                <li>👅 1 вещь, которую можно <strong>попробовать</strong></li>
+                            </ul>
                         </div>
                     </div>
+                    {% endif %}
                 {% empty %}
                     <div class="text-center text-muted mt-5 h-100 d-flex flex-column justify-content-center align-items-center">
-                        <h5>Это начало нового диалога</h5>
-                        <p>Напишите что-нибудь, чтобы компаньон смог вас выслушать.</p>
+                        <div class="display-1 mb-3">🌿</div>
+                        <h5>Я готов тебя выслушать</h5>
+                        <p>Поделись тем, что у тебя на душе.</p>
                     </div>
                 {% endfor %}
             </div>
@@ -75,7 +104,7 @@
             <form id="chat-form" class="mt-auto py-3">
                 {% csrf_token %}
                 <div class="input-group input-group-lg shadow-sm">
-                    <input type="text" id="message-input" class="form-control fs-6" placeholder="Напишите сообщение..." required autocomplete="off">
+                    <input type="text" id="message-input" class="form-control fs-6" placeholder="Как ты себя чувствуешь сегодня?" required autocomplete="off">
                     <button class="btn btn-primary px-4" type="submit">Отправить</button>
                 </div>
             </form>
@@ -85,68 +114,52 @@
 </div>
 
 <script>
-    // --- 1. ЛОГИКА СКРЫТИЯ БОКОВОЙ ПАНЕЛИ ---
+    // --- 1. УПРАВЛЕНИЕ ПАНЕЛЬЮ (SIDEBAR) ---
     const sidebar = document.getElementById('sidebar');
     const mainPanel = document.getElementById('main-panel');
     const toggleBtn = document.getElementById('toggle-sidebar-btn');
 
     toggleBtn.addEventListener('click', () => {
-        // Проверяем, скрыт ли сайдбар сейчас
         const isHidden = sidebar.style.display === 'none';
-
         if (!isHidden) {
-            // СКРЫВАЕМ
             sidebar.style.setProperty('display', 'none', 'important');
-            // Растягиваем основной блок
             mainPanel.classList.remove('col-md-9', 'col-lg-10');
             mainPanel.classList.add('col-12');
         } else {
-            // ПОКАЗЫВАЕМ
             sidebar.style.setProperty('display', 'block', 'important');
-            // Возвращаем размеры колонок
             mainPanel.classList.remove('col-12');
             mainPanel.classList.add('col-md-9', 'col-lg-10');
         }
     });
 
-    // --- 2. ЛОГИКА УДАЛЕНИЯ И ПЕРЕИМЕНОВАНИЯ ЧАТОВ ---
+    // --- 2. УДАЛЕНИЕ И ПЕРЕИМЕНОВАНИЕ ---
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     async function deleteChat(sessionId) {
-        if (!confirm('Вы уверены, что хотите удалить этот диалог навсегда?')) return;
-        
+        if (!confirm('Удалить этот диалог навсегда?')) return;
         await fetch(`/chat/${sessionId}/delete/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken }
         });
-        // После удаления просто перезагружаем страницу на корень
         window.location.href = '/'; 
     }
 
     async function renameChat(sessionId, oldTitle) {
-        // Показываем стандартное всплывающее окно браузера для ввода
-        const newTitle = prompt('Введите новое название чата:', oldTitle);
-        
-        // Если нажали "Отмена" или ввели пустоту — ничего не делаем
+        const newTitle = prompt('Новое название чата:', oldTitle);
         if (!newTitle || newTitle.trim() === '' || newTitle === oldTitle) return;
 
         const response = await fetch(`/chat/${sessionId}/rename/`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify({ title: newTitle })
         });
-
         const data = await response.json();
         if (data.status === 'success') {
-            // Мгновенно обновляем текст в меню
             document.getElementById(`chat-title-${sessionId}`).innerHTML = `💬 ${data.new_title}`;
         }
     }
 
-    // --- 3. СТАНДАРТНАЯ ОТПРАВКА СООБЩЕНИЙ ---
+    // --- 3. ЛОГИКА ЧАТА И АНАЛИТИКИ ---
     const chatForm = document.getElementById('chat-form');
     const chatWindow = document.getElementById('chat-window');
     const messageInput = document.getElementById('message-input');
@@ -159,11 +172,10 @@
         const text = messageInput.value.trim();
         if (!text) return;
 
+        // Рендерим сообщение пользователя
         chatWindow.innerHTML += `
             <div class="mb-3 text-end">
-                <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-primary text-white" style="max-width: 80%; text-align: left;">
-                    ${text}
-                </div>
+                <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-primary text-white" style="max-width: 80%; text-align: left;">${text}</div>
             </div>
         `;
         messageInput.value = '';
@@ -172,35 +184,50 @@
         try {
             const response = await fetch('/send/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: new URLSearchParams({ 
-                    'message': text,
-                    'session_id': currentSessionId 
-                })
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+                body: new URLSearchParams({ 'message': text, 'session_id': currentSessionId })
             });
             
             const data = await response.json();
 
-            // Динамическое обновление заголовка, если ИИ его сгенерировал
+            // Обновляем название чата в сайдбаре
             if (data.new_title) {
                 const activeChatLink = document.getElementById(`chat-title-${currentSessionId}`);
                 if (activeChatLink) activeChatLink.innerHTML = `💬 ${data.new_title}`;
             }
 
-            chatWindow.innerHTML += `
+            // 1. Рендерим ответ ИИ (с исправленными пробелами - в одну строчку!)
+            let aiMessageHTML = `
                 <div class="mb-3">
-                    <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-light text-dark border" style="max-width: 80%; text-align: left;">
-                        ${data.response}
-                    </div>
+                    <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-light text-dark border" style="max-width: 80%; text-align: left; white-space: pre-wrap;">${data.response}</div>
                 </div>
             `;
+
+            // 2. Если тревога высока — добавляем блок заземления (КПТ)
+            if (data.needs_grounding) {
+                aiMessageHTML += `
+                    <div class="mb-3">
+                        <div class="d-inline-block p-3 px-4 rounded shadow-sm bg-success text-white" style="max-width: 80%; text-align: left;">
+                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 Техника "5-4-3-2-1"</h5>
+                            <p class="mb-2 fw-bold">Давай попробуем заземлиться. Найди:</p>
+                            <ul class="mb-0">
+                                <li>👀 5 предметов, которые ты <strong>видишь</strong></li>
+                                <li>🖐️ 4 вещи, которые ты можешь <strong>потрогать</strong></li>
+                                <li>👂 3 звука, которые ты <strong>слышишь</strong></li>
+                                <li>👃 2 запаха, которые ты <strong>чувствуешь</strong></li>
+                                <li>👅 1 вещь, которую можно <strong>попробовать</strong></li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Выводим всё на экран
+            chatWindow.innerHTML += aiMessageHTML;
             chatWindow.scrollTop = chatWindow.scrollHeight;
             
         } catch (error) {
-            console.error('Ошибка соединения:', error);
+            console.error('Ошибка:', error);
         }
     });
 </script>

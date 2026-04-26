@@ -56,53 +56,62 @@ def send_message(request):
     if request.method == "POST":
         user_text = request.POST.get('message')
         session_id = request.POST.get('session_id')
-
+        
         try:
             session = ChatSession.objects.get(id=session_id, user=request.user)
         except ChatSession.DoesNotExist:
             return JsonResponse({'error': 'Сессия не найдена'}, status=400)
         
-        user_msg = Message.objects.create(
-            session=session,
-            sender="user",
-            text=user_text
-        )
-
+        # Сохраняем сообщение пользователя
+        user_msg = Message.objects.create(session=session, sender='user', text=user_text)
+        
         last_messages = Message.objects.filter(session=session).order_by('-timestamp')[:6]
-        history = []
-        for msg in reversed(last_messages):
-            role = 'user' if msg.sender == 'user' else 'assistant'
-            history.append({"role": role, "content": msg.text})
-
+        history = [{"role": 'user' if m.sender == 'user' else 'assistant', "content": m.text} for m in reversed(last_messages)]
+        
+        # Получаем данные от ИИ
         ai_data = get_ai_response_and_analysis(history)
-
+        
         reply_text = ai_data.get('reply', 'Извини, я задумался.')
-        sentiment = ai_data.get('sentiment', 0.1)
         is_trigger = ai_data.get('is_trigger', False)
         new_title = ai_data.get('chat_title', 'Диалог')
 
-        if session.title == "Новый чат":
-            session.title = new_title
-            session.save()
-
-        user_msg.sentiment_value = sentiment
+        # --- ИЗВЛЕКАЕМ НОВУЮ АНАЛИТИКУ ---
+        emotions = ai_data.get('emotions', {})
+        anxiety_level = emotions.get('anxiety', 0.0)
+        user_msg.anxiety = emotions.get('anxiety', 0.0)
+        user_msg.sadness = emotions.get('sadness', 0.0)
+        user_msg.anger = emotions.get('anger', 0.0)
+        user_msg.apathy = emotions.get('apathy', 0.0)
+        user_msg.primary_emotion = ai_data.get('primary_emotion', 'neutral')
+        
+        # Превращаем массив ["учеба", "экзамен"] в строку "учеба, экзамен"
+        factors = ai_data.get('stress_factors', [])
+        user_msg.stress_factors = ", ".join(factors) if isinstance(factors, list) else ""
+        
         user_msg.is_trigger_alert = is_trigger
         user_msg.save()
 
-        if is_trigger:
-            reply_text = ("Я вижу, что тебе сейчас невероятно тяжело и небезопасно. "
-                          "Пожалуйста, знай, что твоя жизнь важна. Обратись к специалистам прямо сейчас.")
+        # Обновление заголовка чата
+        if session.title == "Новый чат":
+            session.title = new_title
+            session.save()
         
-        Message.objects.create(
-            session=session,
-            sender='ai',
-            text=reply_text
-        )
+        needs_grounding = False
+        if anxiety_level >= 0.75:
+            needs_grounding = True
+            reply_text += "\n\nЯ чувствую, что уровень твоей тревоги сейчас очень высок. Давай сделаем короткую паузу и выполним технику заземления. Это поможет вернуть контроль над телом."
+        
+        # Критическое перехватывание
+        if is_trigger:
+            reply_text = "Я вижу, что тебе невероятно тяжело. Пожалуйста, знай, что твоя жизнь важна. Обратись к специалистам прямо сейчас."
 
+        Message.objects.create(session=session, sender='ai', text=reply_text, anxiety=anxiety_level)
+        
         return JsonResponse({
             'response': reply_text,
             'is_trigger': is_trigger,
-            'new_title': session.title
+            'new_title': session.title,
+            'needs_grounding': needs_grounding
         })
     
 @login_required(login_url='/login/')

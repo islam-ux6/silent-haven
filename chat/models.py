@@ -1,37 +1,27 @@
 from django.db import models
+from django.contrib.auth import get_user_model
 
-# Create your models here.
-from django.db import models
-from django.conf import settings
+User = get_user_model()
 
 class ChatSession(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255, default="Новый чат")
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    # Поле для краткого резюме сессии, которое может генерировать ИИ
-    summary = models.TextField(blank=True, verbose_name="Краткое содержание сессии")
-
-    class Meta:
-        verbose_name = "Сессия чата"
-        verbose_name_plural = "Сессии чата"
 
 class Message(models.Model):
-    SENDER_CHOICES = [('user', 'Пользователь'), ('ai', 'ИИ-компаньон')]
-    
-    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE, related_name='messages')
-    sender = models.CharField(max_length=4, choices=SENDER_CHOICES)
-    text = models.TextField(verbose_name="Текст сообщения")
+    session = models.ForeignKey(ChatSession, on_delete=models.CASCADE)
+    sender = models.CharField(max_length=10) 
+    text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     
-    # Поля для мгновенного NLP-анализа
-    is_trigger_alert = models.BooleanField(default=False, verbose_name="Критический маркер")
-    sentiment_value = models.FloatField(null=True, blank=True, verbose_name="Тональность (-1 до 1)")
+    # Старое поле (оставляем для совместимости)
+    sentiment_value = models.FloatField(null=True, blank=True)
+    is_trigger_alert = models.BooleanField(default=False)
 
-class EmergencyResource(models.Model):
-    title = models.CharField(max_length=200, verbose_name="Название службы")
-    phone = models.CharField(max_length=20, verbose_name="Номер телефона")
-    country_code = models.CharField(max_length=10, verbose_name="Код страны (напр. TM, RU, DE)")
-    
-    def __str__(self):
-        return f"{self.title} ({self.country_code})"
+    # --- НОВЫЕ АНАЛИТИЧЕСКИЕ ПОЛЯ ---
+    anxiety = models.FloatField(default=0.0) # Тревога
+    sadness = models.FloatField(default=0.0) # Грусть/Уныние
+    anger = models.FloatField(default=0.0)   # Гнев/Раздражение
+    apathy = models.FloatField(default=0.0)  # Апатия/Выгорание
+    primary_emotion = models.CharField(max_length=50, default='neutral') # Главная эмоция
+    stress_factors = models.CharField(max_length=255, blank=True, null=True) # Источники стресса через запятую
