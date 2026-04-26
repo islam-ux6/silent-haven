@@ -28,6 +28,41 @@
         /* Кастомный скроллбар для аккуратного вида */
         #chat-window::-webkit-scrollbar { width: 6px; }
         #chat-window::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 10px; }
+        .message-bubble {
+            max-width: 75%;
+            padding: 12px 18px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            position: relative;
+            font-size: 15px;
+            line-height: 1.4;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* Сообщение пользователя */
+        .user-bubble {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            color: white;
+            border-bottom-right-radius: 2px; /* Острый уголок справа */
+            margin-left: auto; /* Прижать вправо */
+        }
+
+        /* Сообщение ИИ */
+        .ai-bubble {
+            background: #ffffff;
+            color: #333;
+            border-bottom-left-radius: 2px; /* Острый уголок слева */
+            border: 1px solid #e9ecef;
+        }
+
+        /* Анимация появления */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .message-bubble {
+            animation: fadeIn 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="bg-light overflow-hidden">
@@ -73,8 +108,8 @@
 
             <div id="chat-window" class="p-3 bg-white shadow-sm mt-3 rounded border">
                 {% for msg in messages %}
-                    <div class="mb-3 {% if msg.sender == 'user' %}text-end{% endif %}">
-                        <div class="d-inline-block p-2 px-3 rounded shadow-sm {% if msg.sender == 'user' %}bg-primary text-white{% else %}bg-light text-dark border{% endif %}" style="max-width: 80%; text-align: left; white-space: pre-wrap;">{{ msg.text }}</div>
+                    <div class="mb-3 d-flex {% if msg.sender == 'user' %}justify-content-end{% endif %}">
+                        <div class="message-bubble {% if msg.sender == 'user' %}user-bubble{% else %}ai-bubble{% endif %}">{{ msg.text }}</div>
                     </div>
                     
                     {% if msg.sender == 'ai' and msg.anxiety >= 0.75 %}
@@ -198,8 +233,8 @@
 
             // 1. Рендерим ответ ИИ (с исправленными пробелами - в одну строчку!)
             let aiMessageHTML = `
-                <div class="mb-3">
-                    <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-light text-dark border" style="max-width: 80%; text-align: left; white-space: pre-wrap;">${data.response}</div>
+                <div class="mb-3 d-flex">
+                    <div class="message-bubble ai-bubble" style="white-space: pre-wrap;">${data.response}</div>
                 </div>
             `;
 
