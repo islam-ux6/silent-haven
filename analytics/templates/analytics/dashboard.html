@@ -25,6 +25,19 @@
         <a href="/" class="btn btn-primary px-4 py-2 rounded-pill shadow-sm">Вернуться в чат</a>
     </div>
 
+    <div class="alert alert-{{ volatility_color }} shadow-sm border-0 d-flex align-items-center mb-4" role="alert">
+        <div class="me-4 text-center">
+            <span class="d-block fs-1 fw-bold">σ {{ volatility_index }}</span>
+            <small class="text-uppercase" style="letter-spacing: 1px;">Индекс</small>
+        </div>
+        <div>
+            <h5 class="alert-heading fw-bold mb-1">{{ volatility_status }}</h5>
+            <p class="mb-0 text-opacity-75">
+                Математическая оценка отклонения (стандартное отклонение) вашей тревожности от среднего значения за последние 14 дней.
+            </p>
+        </div>
+    </div>
+
     <div class="row g-4">
         <div class="col-lg-7">
             <div class="card shadow-sm h-100">

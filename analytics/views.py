@@ -1,4 +1,5 @@
 import json
+import math
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
@@ -60,6 +61,30 @@ def dashboard(request):
     trend_anger = [round(stat['anger'] or 0, 2) for stat in daily_stats]
     trend_apathy = [round(stat['apathy'] or 0, 2) for stat in daily_stats]
 
+    # --- 4. МАТЕМАТИЧЕСКАЯ АНАЛИТИКА: ИНДЕКС ВОЛАТИЛЬНОСТИ ---
+    volatility_index = 0.0
+    volatility_status = "Недостаточно данных"
+    volatility_color = "secondary"
+
+    # Считаем стандартное отклонение (σ), если есть хотя бы 2 дня данных
+    if len(trend_anxiety) > 1:
+        n = len(trend_anxiety)
+        mu = sum(trend_anxiety) / n
+        # Вычисляем дисперсию и извлекаем корень
+        variance = sum((x - mu) ** 2 for x in trend_anxiety) / n
+        sigma = math.sqrt(variance)
+        volatility_index = round(sigma, 2)
+
+        if volatility_index >= 0.25:
+            volatility_status = "Высокая волатильность (Резкие скачки тревоги)"
+            volatility_color = "danger"
+        elif volatility_index >= 0.15:
+            volatility_status = "Умеренная нестабильность"
+            volatility_color = "warning"
+        else:
+            volatility_status = "Эмоциональная стабильность"
+            volatility_color = "success"
+
     context = {
         'radar_data': radar_data,
         'top_factors': top_factors,
@@ -68,6 +93,9 @@ def dashboard(request):
         'sadness_json': json.dumps(trend_sadness),
         'anger_json': json.dumps(trend_anger),
         'apathy_json': json.dumps(trend_apathy),
+        # Передаем новые переменные в шаблон
+        'volatility_index': volatility_index,
+        'volatility_status': volatility_status,
+        'volatility_color': volatility_color,
     }
-    
     return render(request, 'analytics/dashboard.html', context)
