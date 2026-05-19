@@ -1,9 +1,11 @@
+import datetime
 import json
 import math
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.db.models import Avg
 from django.db.models.functions import TruncDate
+from django.utils import timezone
 from chat.models import Message
 
 @login_required(login_url='/login/')
@@ -85,6 +87,41 @@ def dashboard(request):
             volatility_status = "Эмоциональная стабильность"
             volatility_color = "success"
 
+    weekday_anxiety = {i: [] for i in range(7)}
+    
+    for msg in user_messages:
+        if msg.anxiety is not None:
+            weekday = msg.timestamp.weekday()
+            weekday_anxiety[weekday].append(msg.anxiety)
+
+    # Считаем историческое среднее для каждого дня недели
+    weekday_averages = {}
+    for day, values in weekday_anxiety.items():
+        weekday_averages[day] = sum(values) / len(values) if values else 0.0
+
+    # Определяем, какой день недели будет завтра
+    tomorrow = timezone.now().date() + datetime.timedelta(days=1)
+    tomorrow_weekday = tomorrow.weekday()
+    
+    # Берем ожидаемый уровень тревоги на завтра и общую среднюю тревогу
+    tomorrow_expected = weekday_averages.get(tomorrow_weekday, 0.0)
+    overall_avg = averages['avg_anxiety'] or 0.0
+
+    # Логика прогноза: если завтрашний день исторически на 20% тревожнее обычного
+    # и общая тревога для этого дня больше 0.4 (чтобы не пугать из-за мелочей)
+    days_ru = ["понедельникам", "вторникам", "средам", "четвергам", "пятницам", "субботам", "воскресеньям"]
+    
+    if tomorrow_expected > (overall_avg * 1.2) and tomorrow_expected > 0.4:
+        forecast_status = f"Ожидается скачок стресса (паттерн по {days_ru[tomorrow_weekday]})"
+        forecast_message = "Наш AI-анализ показывает, что в этот день недели ваш уровень тревоги обычно выше среднего. Рекомендуем заранее запланировать время для отдыха и не перегружать себя задачами."
+        forecast_color = "warning"
+        forecast_icon = "⚠️"
+    else:
+        forecast_status = "Эмоциональный фон стабилен"
+        forecast_message = "Исторические данные показывают, что завтрашний день обычно проходит для вас спокойно. Продолжайте в том же духе!"
+        forecast_color = "info"
+        forecast_icon = "🔮"
+
     context = {
         'radar_data': radar_data,
         'top_factors': top_factors,
@@ -93,9 +130,14 @@ def dashboard(request):
         'sadness_json': json.dumps(trend_sadness),
         'anger_json': json.dumps(trend_anger),
         'apathy_json': json.dumps(trend_apathy),
-        # Передаем новые переменные в шаблон
         'volatility_index': volatility_index,
         'volatility_status': volatility_status,
         'volatility_color': volatility_color,
+        
+        # ВАЖНО: убедись, что эти 4 строки есть в словаре!
+        'forecast_status': forecast_status,
+        'forecast_message': forecast_message,
+        'forecast_color': forecast_color,
+        'forecast_icon': forecast_icon,
     }
     return render(request, 'analytics/dashboard.html', context)

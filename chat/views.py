@@ -92,15 +92,19 @@ def send_message(request):
         is_trigger = ai_data.get('is_trigger', False)
         new_title = ai_data.get('chat_title', 'Диалог')
 
-        emotions = ai_data.get('emotions', {})
-        anxiety_level = emotions.get('anxiety', 0.0)
-        user_msg.anxiety = emotions.get('anxiety', 0.0)
-        user_msg.sadness = emotions.get('sadness', 0.0)
-        user_msg.anger = emotions.get('anger', 0.0)
-        user_msg.apathy = emotions.get('apathy', 0.0)
-        user_msg.primary_emotion = ai_data.get('primary_emotion', 'neutral')
+        emotions = ai_data.get('emotions') or {}
+        anxiety_level = emotions.get('anxiety') or 0.0
         
-        factors = ai_data.get('stress_factors', [])
+        user_msg.anxiety = emotions.get('anxiety') or 0.0
+        user_msg.sadness = emotions.get('sadness') or 0.0
+        user_msg.anger = emotions.get('anger') or 0.0
+        user_msg.apathy = emotions.get('apathy') or 0.0
+        
+        # Защита от null: если get() вернет None, оператор 'or' подставит 'neutral'
+        user_msg.primary_emotion = ai_data.get('primary_emotion') or 'neutral'
+        
+        # Защита от null для факторов стресса
+        factors = ai_data.get('stress_factors') or []
         user_msg.stress_factors = ", ".join(factors) if isinstance(factors, list) else ""
         
         user_msg.is_trigger_alert = is_trigger
