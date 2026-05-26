@@ -1,16 +1,13 @@
+import json
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
-import json
 from .models import ChatSession, Message
 from .ai_services import get_ai_response_and_analysis
 from .forms import CustomUserCreationForm
 
 def chat_interface(request):
-    """
-    Эта функция просто отображает саму HTML-страницу чата.
-    """
     return render(request, 'chat/index.html')
 
 def register(request):
@@ -33,7 +30,7 @@ def chat_interface(request, session_id=None):
     else:
         current_session = sessions.first()
         if not current_session:
-            current_session = ChatSession.objects.create(user=request.user)
+            current_session = ChatSession.objects.create(user=request.user, title="New Chat")
     
     messages = Message.objects.filter(session=current_session).order_by('timestamp')
     
@@ -45,7 +42,7 @@ def chat_interface(request, session_id=None):
 
 @login_required
 def start_new_chat(request):
-    new_session = ChatSession.objects.create(user=request.user)
+    new_session = ChatSession.objects.create(user=request.user, title="New Chat")
     return redirect('chat_with_id', session_id=new_session.id)
 
 @login_required(login_url='/login/')
@@ -57,7 +54,7 @@ def send_message(request):
         try:
             session = ChatSession.objects.get(id=session_id, user=request.user)
         except ChatSession.DoesNotExist:
-            return JsonResponse({'error': 'Сессия не найдена'}, status=400)
+            return JsonResponse({'error': 'Session not found'}, status=400)
         
         user_msg = Message.objects.create(session=session, sender='user', text=user_text)
         
@@ -77,20 +74,18 @@ def send_message(request):
             
             top_recent_factors = list(set(recent_factors))[:3]
 
-            # ИСПРАВЛЕНИЕ: Даем более четкую инструкцию, чтобы избежать якорения
             user_context = f"""
-            [СЕКРЕТНЫЙ КОНТЕКСТ ДЛЯ ИИ]: 
-            В последнее время средний уровень тревоги пользователя: {avg_anx:.2f} из 1.0. 
-            Недавние источники стресса: {', '.join(top_recent_factors)}. 
-            ИНСТРУКЦИЯ: Используй это только для ведения диалога. Оценивай JSON эмоции (anxiety) СТРОГО по последнему сообщению, не копируй прошлую среднюю тревогу!
+            [SECRET CONTEXT FOR AI]: 
+            Recently, the user's average anxiety level is: {avg_anx:.2f} out of 1.0. 
+            Recent stress factors: {', '.join(top_recent_factors)}. 
+            INSTRUCTION: Use this context only for maintaining the dialogue. Evaluate JSON emotions (anxiety) STRICTLY based on the last message, do not copy past average anxiety!
             """
             
-        # ИСПРАВЛЕНИЕ: Убрали дублирующийся запрос без контекста
         ai_data = get_ai_response_and_analysis(history, user_context=user_context)
         
-        reply_text = ai_data.get('reply', 'Извини, я задумался.')
+        reply_text = ai_data.get('reply', 'Sorry, I was lost in thought.')
         is_trigger = ai_data.get('is_trigger', False)
-        new_title = ai_data.get('chat_title', 'Диалог')
+        new_title = ai_data.get('chat_title', 'Dialogue')
 
         emotions = ai_data.get('emotions') or {}
         anxiety_level = emotions.get('anxiety') or 0.0
@@ -100,28 +95,25 @@ def send_message(request):
         user_msg.anger = emotions.get('anger') or 0.0
         user_msg.apathy = emotions.get('apathy') or 0.0
         
-        # Защита от null: если get() вернет None, оператор 'or' подставит 'neutral'
         user_msg.primary_emotion = ai_data.get('primary_emotion') or 'neutral'
         
-        # Защита от null для факторов стресса
         factors = ai_data.get('stress_factors') or []
         user_msg.stress_factors = ", ".join(factors) if isinstance(factors, list) else ""
         
         user_msg.is_trigger_alert = is_trigger
         user_msg.save()
 
-        if session.title == "Новый чат":
+        if session.title in ["New Chat", "Новый чат"]:
             session.title = new_title
             session.save()
         
         needs_grounding = False
-        # Порог уже правильный (0.85)
         if anxiety_level >= 0.85:
             needs_grounding = True
-            reply_text += "\n\nЯ чувствую, что уровень твоей тревоги сейчас очень высок. Давай сделаем короткую паузу и выполним технику заземления. Это поможет вернуть контроль над телом."
+            reply_text += "\n\nI feel that your anxiety level is very high right now. Let's take a short pause and do a grounding technique. This will help you regain control."
         
         if is_trigger:
-            reply_text = "Я вижу, что тебе невероятно тяжело. Пожалуйста, знай, что твоя жизнь важна. Обратись к специалистам прямо сейчас."
+            reply_text = "I see that you are going through an incredibly hard time. Please know that your life matters. Reach out to a professional or an emergency hotline right now."
 
         Message.objects.create(session=session, sender='ai', text=reply_text, anxiety=anxiety_level)
         

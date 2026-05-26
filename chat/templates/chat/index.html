@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>SilentHaven - Эмпатичный ИИ</title>
+    <title>SilentHaven - Empathetic AI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        /* Основные стили высоты и прокрутки */
+        /* Main styles for height and scrolling */
         #chat-window { 
             height: calc(100vh - 180px); 
             overflow-y: auto; 
@@ -20,12 +20,12 @@
             transition: all 0.3s ease;
         }
         
-        /* Стили для элементов списка чатов */
+        /* Styles for chat list items */
         .hover-bg-secondary:hover { background-color: rgba(255,255,255,0.1); }
         .chat-actions { opacity: 0; transition: opacity 0.2s; }
         .nav-item:hover .chat-actions { opacity: 1; }
         
-        /* Кастомный скроллбар для аккуратного вида */
+        /* Custom scrollbar */
         #chat-window::-webkit-scrollbar { width: 6px; }
         #chat-window::-webkit-scrollbar-thumb { background-color: #dee2e6; border-radius: 10px; }
         .message-bubble {
@@ -39,23 +39,23 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         }
 
-        /* Сообщение пользователя */
+        /* User message */
         .user-bubble {
             background: linear-gradient(135deg, #0d6efd, #0b5ed7);
             color: white;
-            border-bottom-right-radius: 2px; /* Острый уголок справа */
-            margin-left: auto; /* Прижать вправо */
+            border-bottom-right-radius: 2px;
+            margin-left: auto;
         }
 
-        /* Сообщение ИИ */
+        /* AI message */
         .ai-bubble {
             background: #ffffff;
             color: #333;
-            border-bottom-left-radius: 2px; /* Острый уголок слева */
+            border-bottom-left-radius: 2px;
             border: 1px solid #e9ecef;
         }
 
-        /* Анимация появления */
+        /* FadeIn Animation */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -71,9 +71,9 @@
         
         <nav id="sidebar" class="col-md-3 col-lg-2 bg-dark sidebar py-4 shadow">
             <div class="px-3 mb-4">
-                <a href="{% url 'new_chat' %}" class="btn btn-outline-light w-100 fw-bold shadow-sm">+ Новый чат</a>
+                <a href="{% url 'new_chat' %}" class="btn btn-outline-light w-100 fw-bold shadow-sm">+ New Chat</a>
             </div>
-            <h6 class="text-uppercase text-muted px-3 mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">История диалогов</h6>
+            <h6 class="text-uppercase text-muted px-3 mb-2" style="font-size: 0.75rem; letter-spacing: 1px;">Chat History</h6>
             <ul class="nav flex-column px-2">
                 {% for session in sessions %}
                 <li class="nav-item mb-1 d-flex justify-content-between align-items-center rounded {% if session.id == current_session.id %}bg-primary{% else %}hover-bg-secondary{% endif %}">
@@ -82,8 +82,8 @@
                         💬 {{ session.title }}
                     </a>
                     <div class="chat-actions pe-2">
-                        <button class="btn btn-sm text-white p-0 me-1" onclick="renameChat({{ session.id }}, '{{ session.title|escapejs }}')" title="Переименовать">✏️</button>
-                        <button class="btn btn-sm text-white p-0" onclick="deleteChat({{ session.id }})" title="Удалить">🗑️</button>
+                        <button class="btn btn-sm text-white p-0 me-1" onclick="renameChat({{ session.id }}, '{{ session.title|escapejs }}')" title="Rename">✏️</button>
+                        <button class="btn btn-sm text-white p-0" onclick="deleteChat({{ session.id }})" title="Delete">🗑️</button>
                     </div>
                 </li>
                 {% endfor %}
@@ -94,14 +94,14 @@
             
             <div class="d-flex justify-content-between align-items-center py-3 border-bottom mt-2">
                 <div class="d-flex align-items-center">
-                    <button id="toggle-sidebar-btn" class="btn btn-sm btn-outline-secondary me-3" title="Скрыть/Показать панель">☰</button>
+                    <button id="toggle-sidebar-btn" class="btn btn-sm btn-outline-secondary me-3" title="Toggle Sidebar">☰</button>
                     <h4 class="mb-0 text-primary fw-bold">🌿 SilentHaven</h4>
                 </div>
                 <div>
-                    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary me-2">📊 Дашборд</a>
+                    <a href="{% url 'dashboard' %}" class="btn btn-sm btn-outline-secondary me-2">📊 Dashboard</a>
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Выйти</button>
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Logout</button>
                     </form>
                 </div>
             </div>
@@ -115,14 +115,14 @@
                     {% if msg.sender == 'ai' and msg.anxiety >= 0.75 %}
                     <div class="mb-3">
                         <div class="d-inline-block p-3 px-4 rounded shadow-sm bg-success text-white" style="max-width: 80%; text-align: left;">
-                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 Техника "5-4-3-2-1"</h5>
-                            <p class="mb-2 fw-bold">Давай попробуем заземлиться. Найди:</p>
+                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 "5-4-3-2-1" Technique</h5>
+                            <p class="mb-2 fw-bold">Let's try to ground ourselves. Find:</p>
                             <ul class="mb-0">
-                                <li>👀 5 предметов, которые ты <strong>видишь</strong></li>
-                                <li>🖐️ 4 вещи, которые ты можешь <strong>потрогать</strong></li>
-                                <li>👂 3 звука, которые ты <strong>слышишь</strong></li>
-                                <li>👃 2 запаха, которые ты <strong>чувствуешь</strong></li>
-                                <li>👅 1 вещь, которую можно <strong>попробовать</strong></li>
+                                <li>👀 5 things you can <strong>see</strong></li>
+                                <li>🖐️ 4 things you can <strong>touch</strong></li>
+                                <li>👂 3 sounds you can <strong>hear</strong></li>
+                                <li>👃 2 things you can <strong>smell</strong></li>
+                                <li>👅 1 thing you can <strong>taste</strong></li>
                             </ul>
                         </div>
                     </div>
@@ -130,8 +130,8 @@
                 {% empty %}
                     <div class="text-center text-muted mt-5 h-100 d-flex flex-column justify-content-center align-items-center">
                         <div class="display-1 mb-3">🌿</div>
-                        <h5>Я готов тебя выслушать</h5>
-                        <p>Поделись тем, что у тебя на душе.</p>
+                        <h5>I'm ready to listen</h5>
+                        <p>Share what's on your mind.</p>
                     </div>
                 {% endfor %}
             </div>
@@ -139,8 +139,8 @@
             <form id="chat-form" class="mt-auto py-3">
                 {% csrf_token %}
                 <div class="input-group input-group-lg shadow-sm">
-                    <input type="text" id="message-input" class="form-control fs-6" placeholder="Как ты себя чувствуешь сегодня?" required autocomplete="off">
-                    <button class="btn btn-primary px-4" type="submit">Отправить</button>
+                    <input type="text" id="message-input" class="form-control fs-6" placeholder="How are you feeling today?" required autocomplete="off">
+                    <button class="btn btn-primary px-4" type="submit">Send</button>
                 </div>
             </form>
         </main>
@@ -149,7 +149,7 @@
 </div>
 
 <script>
-    // --- 1. УПРАВЛЕНИЕ ПАНЕЛЬЮ (SIDEBAR) ---
+    // --- 1. SIDEBAR MANAGEMENT ---
     const sidebar = document.getElementById('sidebar');
     const mainPanel = document.getElementById('main-panel');
     const toggleBtn = document.getElementById('toggle-sidebar-btn');
@@ -167,11 +167,11 @@
         }
     });
 
-    // --- 2. УДАЛЕНИЕ И ПЕРЕИМЕНОВАНИЕ ---
+    // --- 2. DELETE AND RENAME ---
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
     async function deleteChat(sessionId) {
-        if (!confirm('Удалить этот диалог навсегда?')) return;
+        if (!confirm('Delete this chat permanently?')) return;
         await fetch(`/chat/${sessionId}/delete/`, {
             method: 'POST',
             headers: { 'X-CSRFToken': csrfToken }
@@ -180,7 +180,7 @@
     }
 
     async function renameChat(sessionId, oldTitle) {
-        const newTitle = prompt('Новое название чата:', oldTitle);
+        const newTitle = prompt('New chat title:', oldTitle);
         if (!newTitle || newTitle.trim() === '' || newTitle === oldTitle) return;
 
         const response = await fetch(`/chat/${sessionId}/rename/`, {
@@ -194,7 +194,7 @@
         }
     }
 
-    // --- 3. ЛОГИКА ЧАТА И АНАЛИТИКИ ---
+    // --- 3. CHAT & ANALYTICS LOGIC ---
     const chatForm = document.getElementById('chat-form');
     const chatWindow = document.getElementById('chat-window');
     const messageInput = document.getElementById('message-input');
@@ -207,7 +207,6 @@
         const text = messageInput.value.trim();
         if (!text) return;
 
-        // Рендерим сообщение пользователя
         chatWindow.innerHTML += `
             <div class="mb-3 text-end">
                 <div class="d-inline-block p-2 px-3 rounded shadow-sm bg-primary text-white" style="max-width: 80%; text-align: left;">${text}</div>
@@ -225,44 +224,41 @@
             
             const data = await response.json();
 
-            // Обновляем название чата в сайдбаре
             if (data.new_title) {
                 const activeChatLink = document.getElementById(`chat-title-${currentSessionId}`);
                 if (activeChatLink) activeChatLink.innerHTML = `💬 ${data.new_title}`;
             }
 
-            // 1. Рендерим ответ ИИ (с исправленными пробелами - в одну строчку!)
             let aiMessageHTML = `
                 <div class="mb-3 d-flex">
                     <div class="message-bubble ai-bubble" style="white-space: pre-wrap;">${data.response}</div>
                 </div>
             `;
 
-            // 2. Если тревога высока — добавляем блок заземления (КПТ)
+            // Grounding technique (CBT)
             if (data.needs_grounding) {
                 aiMessageHTML += `
                     <div class="mb-3">
                         <div class="d-inline-block p-3 px-4 rounded shadow-sm bg-success text-white" style="max-width: 80%; text-align: left;">
-                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 Техника "5-4-3-2-1"</h5>
-                            <p class="mb-2 fw-bold">Давай попробуем заземлиться. Найди:</p>
+                            <h5 class="mb-2 border-bottom border-light pb-2">🌿 "5-4-3-2-1" Technique</h5>
+                            <p class="mb-2 fw-bold">Let's try to ground ourselves. Find:</p>
                             <ul class="mb-0">
-                                <li>👀 5 предметов, которые ты <strong>видишь</strong></li>
-                                <li>🖐️ 4 вещи, которые ты можешь <strong>потрогать</strong></li>
-                                <li>👂 3 звука, которые ты <strong>слышишь</strong></li>
-                                <li>👃 2 запаха, которые ты <strong>чувствуешь</strong></li>
-                                <li>👅 1 вещь, которую можно <strong>попробовать</strong></li>
+                                <li>👀 5 things you can <strong>see</strong></li>
+                                <li>🖐️ 4 things you can <strong>touch</strong></li>
+                                <li>👂 3 sounds you can <strong>hear</strong></li>
+                                <li>👃 2 things you can <strong>smell</strong></li>
+                                <li>👅 1 thing you can <strong>taste</strong></li>
                             </ul>
                         </div>
                     </div>
                 `;
             }
 
-            // Выводим всё на экран
             chatWindow.innerHTML += aiMessageHTML;
             chatWindow.scrollTop = chatWindow.scrollHeight;
             
         } catch (error) {
-            console.error('Ошибка:', error);
+            console.error('Error:', error);
         }
     });
 </script>
